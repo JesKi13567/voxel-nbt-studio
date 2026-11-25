@@ -46,4 +46,6 @@
 
 ---
 
-本项目主要由生成式 AI 开发；插件运行不需要 AI 服务或密钥。[MIT License](LICENSE) · [第三方许可证](media/licenses/) · [开发指南](DEVELOPMENT.md) · [更新日志](CHANGELOG.md)
+本项目主要由 GPT 6.2 Sol 生成式 AI 开发
+
+[MIT License](LICENSE) · [第三方许可证](media/licenses/) · [开发指南](DEVELOPMENT.md) · [更新日志](CHANGELOG.md)
