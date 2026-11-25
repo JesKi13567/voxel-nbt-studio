@@ -6,6 +6,8 @@
 
 ![Voxel NBT Studio 编辑界面](docs/screenshots/overview.png)
 
+此插件是基于游戏版本26.3进行开发，不同版本可能会导致部分功能无法正常使用，需要后续适配
+
 ## 安装并打开结构
 
 1. 下载 `.vsix`，在 VS Code 的扩展面板菜单中选择 **从 VSIX 安装…**，安装后重载窗口。
