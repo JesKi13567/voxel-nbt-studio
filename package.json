@@ -5,13 +5,13 @@
   "publisher": "local-datapack-tools",
   "version": "1.0.0",
   "license": "MIT",
-  "homepage": "https://github.com/KKNM231/voxel-nbt-studio#readme",
+  "homepage": "https://github.com/KiralasuKi/voxel-nbt-studio#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/KKNM231/voxel-nbt-studio.git"
+    "url": "https://github.com/KiralasuKi/voxel-nbt-studio.git"
   },
   "bugs": {
-    "url": "https://github.com/KKNM231/voxel-nbt-studio/issues"
+    "url": "https://github.com/KiralasuKi/voxel-nbt-studio/issues"
   },
   "engines": {
     "vscode": "^1.90.0"

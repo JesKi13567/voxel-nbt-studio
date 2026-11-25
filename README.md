@@ -2,7 +2,7 @@
 
 在 VS Code 里用 3D 界面查看和编辑 Minecraft Java 的结构 `.nbt`。
 
-[下载 VSIX](https://github.com/KKNM231/voxel-nbt-studio/releases/latest)
+[下载 VSIX](https://github.com/KiralasuKi/voxel-nbt-studio/releases/latest)
 
 ![Voxel NBT Studio 编辑界面](docs/screenshots/overview.png)
 
