@@ -1,0 +1,74 @@
+const {chromium}=require(process.env.BROWSER_PLAYWRIGHT),assert=require('node:assert/strict');
+const {readFile}=require('node:fs/promises'),{join}=require('node:path'),{Structure}=require('../lib/nbt');
+(async()=>{
+ const browser=await chromium.connectOverCDP('http://127.0.0.1:17941');
+ try{
+  const page=browser.contexts()[0].pages()[0];page.setDefaultTimeout(8000);
+  const webview=page.locator('iframe.webview.ready:visible');
+  const pane=webview.contentFrame().locator('iframe#active-frame');
+  const step=(fn,...args)=>pane.evaluate((frame,[src,values])=>{const w=frame.contentWindow,q=s=>w.document.querySelector(s);return Function('q','args','return ('+src+')(...args)')(q,values);},[String(fn),args]);
+  const wait=async fn=>{for(let i=0;i<70;i++){if(await step(fn))return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+fn);};
+  const click=selector=>step(s=>q(s).click(),selector);
+  await wait(()=>q('#materialIntro')?.open&&q('#stats').textContent.startsWith('2 可见'));
+  assert.equal(await step(()=>q('#material').textContent),'导入材质…');
+  assert.deepEqual(await step(()=>[...q('#materialIntro').querySelectorAll('[data-intro-resource]')].map(b=>b.dataset.introResource)),['jar','folder']);
+  await click('#materialLater');await wait(()=>!q('#materialIntro').open);
+  await click('#material');assert.equal(await step(()=>q('#materialIntro').open),true);await click('#materialLater');
+  const input=page.locator('.quick-input-widget .quick-input-box input');
+  await page.keyboard.press('Control+Shift+p');await input.fill('>Developer: Reload Window');
+  await page.getByText('Developer: Reload Window',{exact:true}).first().waitFor();
+  await Promise.all([page.waitForEvent('domcontentloaded'),input.press('Enter')]);
+  await wait(()=>q('#stats')?.textContent.startsWith('2 可见'));
+  assert.equal(await step(()=>q('#materialIntro').open),false);
+  await click('#topView');
+  const point=async([x,y,z])=>{
+   const outer=await webview.boundingBox(),r=await step(()=>q('#scene').getBoundingClientRect().toJSON());
+   const pitch=1.565,dist=Math.hypot(3,2,3)*1.07,dy=y-(.96+Math.sin(pitch)*dist),dz=z-(1.5+Math.cos(pitch)*dist);
+   const k=r.height*.5/(Math.tan(95*Math.PI/360)*(-Math.sin(pitch)*dy-Math.cos(pitch)*dz));
+   return [outer.x+r.x+r.width*.5+(x-1.5)*k,outer.y+r.y+r.height*.5-(dy*Math.cos(pitch)-dz*Math.sin(pitch))*k];
+  };
+  const a=await point([.5,2,1.5]),b=await point([1.5,2,1.5]);
+  const drag=async()=>{await page.mouse.move(...a);await page.mouse.down();await page.mouse.move(...b,{steps:4});await page.mouse.up();};
+  await click('[data-tool=box]');await drag();
+  assert.equal(await step(()=>q('#mode').textContent),'框选区域');
+  assert.equal(await step(()=>q('[data-tool=fill],[data-tool=select]')===null),true);
+  await step(()=>{q('#name').value='minecraft:gold_block';q('#name').dispatchEvent(new Event('input'));});
+  await click('#apply');
+  await wait(()=>!q('#save').disabled&&q('#selectionTitle').textContent==='已选 2 格');
+  await click('#steps [data-axis="2"][data-step="1"]');
+  await wait(()=>!q('#save').disabled&&q('#cornerA').value==='0, 1, 2'&&q('#cornerB').value==='1, 1, 2');
+  assert.equal(await step(()=>q('#mode').textContent),'框选区域');
+  await click('#undo');await wait(()=>q('#cornerA').value==='0, 1, 1');
+  await click('#undo');
+  await step(()=>{q('#name').value='minecraft:stone';q('#name').dispatchEvent(new Event('input'));});
+  assert.deepEqual(await step(()=>[q('#cornerA').value,q('#cornerB').value]),['0, 1, 1','1, 1, 1']);
+  await click('#deselect');await drag();
+  assert.equal(await step(()=>q('#selectionTitle').textContent),'已选 2 格');
+  await click('#deselect');await page.mouse.dblclick(...b);assert.equal(await step(()=>q('#selectionTitle').textContent),'已选 1 格');
+  await click('[data-tool=place]');await page.mouse.click(...a);
+  await wait(()=>q('#dimensions').textContent==='3 × 3 × 3'&&q('#message').textContent.includes('结构范围已扩展'));
+  await click('#undo');await wait(()=>q('#dimensions').textContent==='3 × 2 × 3');
+  await click('#redo');await wait(()=>q('#dimensions').textContent==='3 × 3 × 3');
+  await click('#undo');await wait(()=>q('#dimensions').textContent==='3 × 2 × 3');
+  await click('[data-tool=extrude]');await click('#steps [data-axis="1"][data-step="1"]');
+  await wait(()=>q('#dimensions').textContent==='3 × 3 × 3'&&q('#selectionTitle').textContent==='已选 2 格');
+  await click('#save');const file=join(process.env.VOXEL_SMOKE_ROOT,'a.nbt');
+  let doc;for(let i=0;i<50;i++){doc=await Structure.open(await readFile(file));if(doc.size[1]===3)break;await new Promise(r=>setTimeout(r,100));}
+  assert.deepEqual(doc.size,[3,3,3]);assert.equal(doc.state((doc.at(doc.cell([1,2,1]))>>1)-1).name,'minecraft:stone');
+  await click('#snbtMode');await wait(()=>!q('#snbtText').readOnly&&q('#snbtText').value.includes('minecraft:stone'));
+  const source=await step(()=>q('#snbtText').value);
+  const inputSnbt=text=>step(value=>{const field=q('#snbtText');field.value=value;field.dispatchEvent(new field.ownerDocument.defaultView.Event('input'));},text);
+  await inputSnbt('{');await click('#snbtApply');await wait(()=>q('#snbtStatus').classList.contains('error'));
+  assert.equal(await step(()=>q('#snbtText').value),'{');
+  await click('#snbtClose');await click('#snbtMode');assert.equal(await step(()=>q('#snbtText').value),'{');
+  await inputSnbt(source.replace('"minecraft:stone"','"minecraft:gold_block"'));await click('#snbtApply');
+  await wait(()=>!q('#snbtDialog').open&&q('#name').value==='minecraft:stone');
+  await click('#snbtMode');await wait(()=>!q('#snbtText').readOnly&&q('#snbtText').value.includes('minecraft:gold_block'));await click('#snbtClose');
+  await click('#undo');await wait(()=>q('#save').disabled===false);
+  await click('#snbtMode');await wait(()=>!q('#snbtText').readOnly&&q('#snbtText').value.includes('minecraft:stone'));await click('#snbtClose');
+  await click('#redo');await click('#save');
+  for(let i=0;i<50;i++){doc=await Structure.open(await readFile(file));if(doc.state((doc.at(doc.cell([1,2,1]))>>1)-1)?.name==='minecraft:gold_block')break;await new Promise(r=>setTimeout(r,100));}
+  assert.equal(doc.state((doc.at(doc.cell([1,2,1]))>>1)-1).name,'minecraft:gold_block');
+  console.log('WORKFLOW_OK: first-launch and reload, merged selection tools, double click, place/extrude, undo/redo, SNBT validation, draft retention and save');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

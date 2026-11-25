@@ -1,0 +1,16 @@
+/dist/
+/logs/
+/node_modules/
+/.vscode/
+/.idea/
+/.env
+/.env.*
+__pycache__/
+*.log
+*.class
+*.jar
+*.exe
+*.vsix
+*.nbt
+*.litematic
+*.tmp

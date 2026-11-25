@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src __CSP__; script-src __CSP__; connect-src __CSP__; worker-src blob:;">
+<link rel="stylesheet" href="__CSS__"><title>Voxel NBT Studio</title></head>
+<body data-worker="__WORKER__" data-assets="__ASSETS__">
+<header><div class="brand">▧ <b>Voxel NBT Studio</b></div><span id="dimensions">读取结构…</span><div class="actions"><button id="undo" title="Ctrl+Z">↶ 撤销</button><button id="redo" title="Ctrl+Y">↷ 重做</button><button id="save" class="primary">保存</button><button id="snbtMode" type="button" title="查看或编辑整个结构的 SNBT">SNBT</button><button id="keyboard" title="配置资源和操作快捷键" aria-label="插件设置">设置</button></div></header>
+<main>
+<nav id="tools" aria-label="模型工具">
+<button data-tool="view" title="1 · 环绕查看" aria-label="查看"><span>◈</span>查看</button>
+<button data-tool="place" title="2 · 在选中的面外添砖；空白处在当前层放置" aria-label="放置"><span>＋</span>放置</button>
+<button data-tool="paint" title="3 · 改变已有方块的状态或材质" aria-label="涂刷"><span>▨</span>涂刷</button>
+<button data-tool="erase" title="4 · 去掉方块记录，不写空气" aria-label="擦除"><span>−</span>擦除</button>
+<button data-tool="pick" title="5 · 取样并查看方块位置和 NBT" aria-label="取样"><span>⊙</span>取样</button>
+<button data-tool="extrude" title="S · 将选区沿一个轴复制挤出" aria-label="挤出选区"><span>⤒</span>挤出</button>
+<button data-tool="box" title="B · 框选、填充、移动或旋转" aria-label="框选区域"><span>⛶</span>框选</button>
+</nav>
+<section class="viewport"><canvas id="scene" tabindex="0" aria-label="三维方块模型"></canvas><div class="viewportTop"><div class="viewportLeft"><span id="mode">查看</span><button id="invisibleBlocks" type="button" aria-pressed="false" title="红色：结构空位；蓝紫色：空气、洞穴空气和虚空空气。开启后可用擦除删除空气记录。" data-legend="红色：结构空位；蓝紫色：空气、洞穴空气和虚空空气。开启后可用擦除删除空气记录。">显示隐形方块</button></div><div><button id="material" title="切换材质和简模">材质</button> <button id="flyView" title="F · 第一人称飞行：WASD 移动，鼠标转向" aria-label="第一人称飞行" aria-pressed="false">飞行</button> <button id="topView" title="切到俯视" aria-label="俯视">俯视</button> <button id="reset" title="恢复环绕视角" aria-label="复位">复位</button> <button id="structureBounds" type="button" title="结构边框：原点三轴 X 红、Y 绿、Z 蓝；其他边为白色，不穿过方块" aria-pressed="false">边框</button></div></div><div id="message" role="status"></div><div id="coords">—</div><div class="command-dock"><small id="commandHelp" role="status"></small><div class="command-row"><input id="structureCommand" type="text" aria-label="结构指令" placeholder="/setblock、/fill、/summon" spellcheck="false" autocomplete="off" maxlength="262144" disabled><button id="commandPick" type="button" aria-pressed="false" title="填入画布坐标" disabled>取坐标</button></div></div><div id="flightReticle" aria-hidden="true" hidden></div><div id="flightHelp" hidden>WASD 移动 · 鼠标转向 · 空格上升 / Shift 下降 · 滚轮调速 · Esc 退出</div></section>
+<div id="sidebarSplitter" role="separator" aria-label="调整编辑侧栏尺寸" aria-orientation="vertical" aria-controls="editorSidebar" tabindex="0" title="拖动调整侧栏；也可聚焦后按方向键"></div>
+<aside id="editorSidebar" class="sidebar" aria-label="编辑面板">
+  <section class="sidebar-view" aria-labelledby="sidebarViewTitle">
+    <h2 id="sidebarViewTitle" class="sidebar-zone-title">视图</h2>
+    <div class="layer-strip">
+    <label for="layerMode">显示范围</label>
+    <select id="layerMode"><option value="full">全模型</option><option value="below">到当前层</option><option value="single">仅当前层</option></select>
+    <label for="layer">Y <input id="layer" type="number" min="0" value="0" title="当前工作层" aria-label="Y 层"></label>
+    <input id="layerRange" type="range" aria-label="当前 Y 层" min="0" max="0" value="0">
+    </div>
+  </section>
+  <div class="workspace-nav">
+  <div class="sidebar-tabs" role="tablist" aria-label="编辑面板分类">
+    <button id="tab-blocks" role="tab" aria-controls="pane-blocks" aria-selected="true" data-sidebar="blocks">方块</button>
+    <button id="tab-inspect" role="tab" aria-controls="pane-inspect" aria-selected="false" tabindex="-1" data-sidebar="inspect">检查</button>
+    <button id="tab-entities" role="tab" aria-controls="pane-entities" aria-selected="false" tabindex="-1" data-sidebar="entities">实体</button>
+    <button id="tab-tools" role="tab" aria-controls="pane-tools" aria-selected="false" tabindex="-1" data-sidebar="tools">工具</button>
+    <button id="tab-templates" role="tab" aria-controls="pane-templates" aria-selected="false" tabindex="-1" data-sidebar="templates">模板</button>
+  </div>
+  </div>
+  <div class="sidebar-body">
+    <details id="transformPanel" class="context-card is-empty" open hidden>
+      <summary class="context-summary">
+        <span><span class="context-eyebrow">当前操作</span><strong id="contextTool">框选</strong></span>
+        <span class="context-stat"><span id="selectionTitle">已选 0 格</span><small id="selectionRange"></small></span>
+      </summary>
+      <div class="context-body">
+        <div id="boxPanel" class="context-section" hidden>
+          <h3>坐标范围</h3>
+          <div class="form-fields box-coords"><label for="cornerA">A</label><input id="cornerA" placeholder="X, Y, Z"><label for="cornerB">B</label><input id="cornerB" placeholder="X, Y, Z"></div>
+          <small id="boxHint"></small><small>Alt + 滚轮调上边界；加 Shift 调下边界。</small>
+          <label class="check" title="只有开启实体预览时才能框选实体"><input id="boxIncludeEntities" type="checkbox" disabled>包含实体</label>
+          <div id="fillMask"></div>
+          <div class="row paletteBtns"><button id="confirmBox">选定范围</button><button id="apply" class="primary">填充选区</button></div>
+        </div>
+        <small id="emptySelection">先框选区域或点选要挤出的方块。</small>
+        <div class="context-section context-transform">
+          <h3 id="stepHeading">平移</h3>
+          <div id="steps" class="axis-steps">
+            <button data-axis="0" data-step="-1">X−</button><button data-axis="0" data-step="1">X+</button>
+            <button data-axis="1" data-step="-1">Y−</button><button data-axis="1" data-step="1">Y+</button>
+            <button data-axis="2" data-step="-1">Z−</button><button data-axis="2" data-step="1">Z+</button>
+          </div>
+        </div>
+        <div class="context-section transform-controls" id="rotateControls" hidden>
+          <h3>旋转</h3>
+          <div class="axis-steps turn-steps"><button data-turn="0" data-spin="-1" aria-label="绕 X 轴旋转 -90 度">X↶</button><button data-turn="0" data-spin="1" aria-label="绕 X 轴旋转 90 度">X↷</button><button data-turn="1" data-spin="-1" aria-label="绕 Y 轴旋转 -90 度">Y↶</button><button data-turn="1" data-spin="1" aria-label="绕 Y 轴旋转 90 度">Y↷</button><button data-turn="2" data-spin="-1" aria-label="绕 Z 轴旋转 -90 度">Z↶</button><button data-turn="2" data-spin="1" aria-label="绕 Z 轴旋转 90 度">Z↷</button></div>
+          <div class="row paletteBtns"><button id="pickPivot" aria-pressed="false">取样轴心</button><button id="resetPivot">恢复居中</button></div><small id="pivotText" aria-live="polite"></small>
+        </div>
+        <div class="context-footer"><button id="deselect">清空选区</button></div>
+      </div>
+    </details>
+    <div id="pane-blocks" class="sidebar-page" role="tabpanel" aria-labelledby="tab-blocks">
+      <div class="sidebar-page-head"><h2>方块</h2><p>选择材料与配置画笔</p></div>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>调色板</h3><select id="palette" title="切换模板的调色板变体" aria-label="调色板变体"></select></div>
+        <input id="filter" type="search" placeholder="搜索方块或状态…" aria-label="搜索调色板">
+        <div id="swatches" aria-label="调色板"></div>
+        <details class="disclosure advanced-section"><summary>管理调色板变体</summary>
+          <div class="row paletteBtns"><button id="paletteAdd" title="复制当前调色板，作为一套新变体">复制成新板</button><button id="paletteDelete" title="仅删除当前变体">删除当前板</button><button id="paletteState" title="用画笔方块的 ID 和属性替换当前变体所选槽位">更新当前槽位</button><button id="paletteClean" title="移除没有任何方块记录引用的状态槽位">清除未使用颜料</button></div>
+          <small>修改槽位只影响当前调色板。</small>
+        </details>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>画笔方块</h3><button id="saveBrushPreset" type="button">保存为预设…</button></div>
+        <div class="form-fields"><label for="brushPreset">预设</label><button id="brushPreset" type="button" popovertarget="brushPresetMenu">选择预设… <span aria-hidden="true">⌄</span></button></div>
+        <div id="brushPresetMenu" popover role="group" aria-label="画笔预设"></div>
+        <div class="form-fields"><label for="name">方块 ID</label><input id="name" spellcheck="false" value="minecraft:stone" placeholder="minecraft:stone"></div>
+        <div id="brushStateForm" class="inspect-tree" aria-label="画笔状态"></div>
+        <details id="brushAdvanced" class="disclosure inspect-advanced"><summary>高级 · 手动输入状态</summary><label for="props">状态表达式</label><input id="props" spellcheck="false" placeholder="axis=y, waterlogged=false"></details>
+        <small>预设、调色板、取样或方块 ID 都可设置画笔。状态修改仅影响当前画笔。</small>
+      </section>
+      <div id="paintMask" class="sidebar-card contextual-settings">
+        <div id="maskPanel" class="inline-mask" hidden>
+          <div class="row mask-controls"><label class="check"><input id="maskEnabled" type="checkbox">按方块谓词筛选</label><button id="maskOpen" type="button" aria-expanded="false" aria-controls="maskOptions">编辑谓词…</button></div>
+          <small id="maskStatus"></small>
+          <small id="sharedMaskHint" hidden>放置和涂刷共用。放置检查实际落点，偏移也从落点计算。</small>
+          <div id="maskOptions" hidden>
+            <small id="maskSource"></small><div id="maskTree"></div>
+            <details class="disclosure"><summary>导入 / 复制 JSON</summary><textarea id="maskJson" rows="5" aria-label="谓词 JSON" spellcheck="false"></textarea><button id="maskImport">从 JSON 导入</button></details>
+            <p id="maskError" role="status"></p><div class="row paletteBtns"><button id="maskSave" class="primary">应用掩码</button><button id="maskCancel">取消</button></div>
+            <datalist id="maskFluidTags"></datalist><datalist id="maskDirectTags"></datalist>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="pane-inspect" class="sidebar-page" role="tabpanel" aria-labelledby="tab-inspect" hidden>
+      <div class="sidebar-page-head"><h2>检查</h2><p>查看或修改取样方块</p></div>
+      <section id="inspectEmpty" class="sidebar-card empty-card"><h3>还没有取样</h3><small>用取样工具点击方块，在这里查看单块状态和方块实体。</small><button id="startPick" type="button">切换到取样</button></section>
+      <section id="stateEditor" class="sidebar-card" hidden>
+        <div class="card-head"><h3>单块状态</h3></div><p id="stateSummary" class="muted"></p>
+        <div id="stateForm" class="inspect-tree"></div>
+        <div class="row paletteBtns"><button id="stateApply" class="primary">应用状态</button><button id="stateReset">重置</button></div>
+        <small>只修改当前方块与调色板变体。</small>
+      </section>
+      <section id="entityPanel" class="sidebar-card" hidden>
+        <div class="card-head"><h3>方块实体</h3><span id="noEntity" class="muted">无 NBT</span></div>
+        <details class="disclosure"><summary>查看数据</summary><pre id="inspect">用取样工具点击方块。</pre></details>
+        <div id="missingEntity" hidden><small>这个方块没有保存方块实体数据。</small><button id="initTile" type="button">初始化方块实体</button></div>
+        <div id="tileEditor" hidden>
+          <fieldset id="tileForm" class="entity-nbt-tree" aria-label="可视化方块实体 NBT"></fieldset>
+          <div class="row paletteBtns"><button id="tileApply" class="primary">应用 NBT</button><button id="tileReset">重置</button></div>
+          <small id="tileNbtError" role="alert"></small>
+          <details id="tileAdvanced" class="disclosure inspect-advanced"><summary>高级 SNBT · 按路径编辑</summary>
+          <div class="form-fields"><label for="tilePath">字段</label><input id="tilePath" list="tileFields" spellcheck="false" placeholder="如 LootTable"></div><datalist id="tileFields"></datalist><small id="tileHint"></small>
+          <label for="tileValue">SNBT 值</label><textarea id="tileValue" rows="3" spellcheck="false" placeholder='如 "minecraft:empty" 或 0L'></textarea>
+          <label class="check"><input id="tileType" type="checkbox">允许更改标签类型</label>
+          <div class="row paletteBtns"><button id="tileSave" class="primary">写入字段</button><button id="tileDelete">删除字段</button></div>
+          </details>
+        </div>
+      </section>
+    </div>
+    <div id="pane-templates" class="sidebar-page" role="tabpanel" aria-labelledby="tab-templates" hidden>
+      <div class="sidebar-page-head"><h2>模板</h2><p>复制选区与放置蓝图</p></div>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>放置设置</h3></div>
+        <small id="templateHelp" aria-live="polite">点击模板后，在画布上选择落点。</small>
+        <label class="check" title="不影响从实体分栏复制的单独实体模板"><input id="placeTemplateEntities" type="checkbox" checked>放置模板实体</label>
+        <div id="templatePlacement" hidden>
+          <div class="form-fields"><label for="pasteAnchor">落点对齐</label><select id="pasteAnchor"><option value="center">底面中心</option><option value="corner">底面边角</option></select></div>
+          <label class="check"><input id="ignorePasteFluids" type="checkbox">忽略流体</label>
+          <small>跳过水、岩浆和气泡柱；保留含水方块。</small>
+          <div class="row paletteBtns"><button id="confirmPaste" class="primary">确认放置</button><button id="cancelPaste">取消</button><button id="pasteOverwriteSettings">覆盖规则</button></div>
+        </div>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>临时模板</h3><button id="copyTemplate">复制选区</button></div>
+        <label class="check"><input id="templateShowInvisible" type="checkbox">缩略图显示隐形方块</label>
+        <div id="templateList"></div>
+        <p class="empty-template">列表为空。框选后点「复制选区」（Ctrl+C）。</p>
+      </section>
+    </div>
+    <div id="pane-entities" class="sidebar-page" role="tabpanel" aria-labelledby="tab-entities" hidden>
+      <div class="sidebar-page-head"><h2>实体</h2><p>预览、移动与编辑实体</p></div>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>预览</h3></div>
+        <label class="check"><input id="renderEntities" type="checkbox" checked disabled>渲染实体（客户端 JAR）</label>
+        <small id="entityStatus" role="status"></small>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>选择与变换</h3></div>
+        <div class="form-fields"><label for="entityList">实体</label><select id="entityList"></select></div>
+        <small id="entityMotionHint">在查看或取样模式下可点选实体。拖箭头平移，拖绿环水平旋转，Esc 取消。</small>
+        <div class="form-fields field-spaced"><label for="entityPos">位置</label><input id="entityPos" placeholder="X, Y, Z" spellcheck="false"></div>
+        <div class="row paletteBtns"><button id="entityMove" type="button" disabled>应用位置</button><button id="entityPickPos" type="button" disabled>取样位置</button><button id="entityCopy" type="button" disabled>复制实体</button><button id="entityDelete" type="button" disabled>删除实体</button></div>
+      </section>
+      <section id="entityEditor" class="sidebar-card" hidden>
+        <div class="card-head"><h3>实体 NBT</h3></div>
+        <fieldset id="entityForm" class="entity-nbt-tree" aria-label="可视化实体 NBT"></fieldset>
+        <div class="row paletteBtns"><button id="entityApply" class="primary" type="button">应用字段</button><button id="entityReset" type="button">重置草稿</button></div>
+        <small id="entityNbtError" role="alert"></small>
+        <details class="disclosure inspect-advanced"><summary>SNBT 源码</summary><textarea id="entitySnbt" rows="9" spellcheck="false" aria-label="实体 SNBT"></textarea><button id="entityApplySnbt" type="button">应用 SNBT</button></details>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>新增实体</h3></div>
+        <div class="form-fields"><label for="entityId">类型 ID</label><input id="entityId" placeholder="minecraft:pig" list="entityIds" spellcheck="false"><datalist id="entityIds"></datalist></div>
+        <div class="row paletteBtns"><button id="entityCreate" type="button" disabled>在位置栏坐标新增</button></div>
+        <small id="entityCreateInfo" role="status"></small>
+      </section>
+    </div>
+    <div id="pane-tools" class="sidebar-page" role="tabpanel" aria-labelledby="tab-tools" hidden>
+      <div class="sidebar-page-head"><h2>工具</h2><p>结构尺寸与编辑规则</p></div>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>结构</h3><button id="resize" title="修改结构大小">修改尺寸</button></div><small>以原点为基准扩展或裁剪，不移动方块坐标。</small>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>选取与镜像</h3></div>
+        <div class="row"><label class="check"><input id="mx" type="checkbox">X 镜像</label><label class="check"><input id="mz" type="checkbox">Z 镜像</label></div>
+        <label class="check"><input id="selectFluid" type="checkbox">允许选中流体</label>
+      </section>
+      <section class="sidebar-card">
+        <div class="card-head"><h3>移动与覆盖</h3></div>
+        <label class="check"><input id="moveTile" type="checkbox">允许移动方块实体</label>
+        <label class="check"><input id="moveOverwrite" type="checkbox">允许移动后覆盖</label>
+        <small>同样适用于蓝图放置。</small>
+        <details id="overwriteList" class="disclosure"><summary>移动覆盖白名单 <span id="allowCount"></span></summary><small>只限制目标方块；留空不限制普通方块。</small><div class="row paletteBtns"><input id="allowBlock" aria-label="允许覆盖的方块 ID" placeholder="minecraft:stone"><button id="allowAdd">添加</button></div><button id="allowPick" aria-pressed="false">用取样添加</button><ul id="allowList"></ul></details>
+        <label class="check"><input id="overwrite" type="checkbox">允许丢弃目标方块实体数据</label>
+        <small>「移动」会保留源箱子的物品；「丢弃」则允许删除目标原有的 NBT。</small>
+      </section>
+    </div>
+  </div>
+</aside>
+</main><dialog id="snbtDialog" aria-labelledby="snbtTitle"><div class="settingsHead"><h2 id="snbtTitle">结构 SNBT</h2><button id="snbtClose" type="button">返回 3D</button></div><textarea id="snbtText" spellcheck="false" wrap="off" aria-label="结构 SNBT 正文" maxlength="4194304" readonly></textarea><p id="snbtStatus" role="status" aria-live="polite"></p><div class="row paletteBtns"><button id="snbtApply" type="button" class="primary" disabled>应用 SNBT</button><button id="snbtReload" type="button" title="重新读取结构并丢弃当前草稿">重新读取</button></div></dialog><dialog id="sizeDialog"><form id="sizeForm"><h2>修改结构大小</h2><p>保留现有原点，新增范围填充空气。缩小时，超出边界的方块和实体会先提示再裁剪。</p><div class="row"><label>X <input id="sizeX" type="number" min="1" max="4096" required></label><label>Y <input id="sizeY" type="number" min="1" max="4096" required></label><label>Z <input id="sizeZ" type="number" min="1" max="4096" required></label></div><div class="row"><button id="cancelSize" type="button">取消</button><button class="primary" type="submit">应用尺寸</button></div></form></dialog><dialog id="materialIntro"><h2>导入 Minecraft 方块材质</h2><p>导入与结构版本相符的客户端 JAR，即可使用原版材质与精确的方块选取形状。未导入时使用色块预览与整格命中。</p><div class="row paletteBtns"><button class="primary" data-intro-resource="jar">选择客户端 JAR…</button><button id="materialLater" type="button">稍后再说</button></div><small>只读取本地文件。以后可点视窗上方的“导入材质…”或进入设置。</small></dialog><dialog id="settingsDialog"><div class="settingsHead"><h2>Voxel NBT Studio 设置</h2><button id="settingsClose">关闭</button></div><h3>鼠标操作习惯</h3><label for="navigationPreset">预设</label> <select id="navigationPreset"><option value="blockbench">Blockbench</option><option value="blender">Blender</option></select><p id="navigationHint"></p><h3>原版资源</h3><p id="resourcePath"></p><div class="row paletteBtns"><button data-resource="jar">选择客户端 JAR…</button><button data-resource="none">不使用</button></div><small>从本机文件选择。切换资源会重载此预览，不会丢弃未保存的编辑。</small><h3>渲染</h3><div class="form-fields"><label for="renderMode">渲染风格</label><select id="renderMode"><option value="smooth">平滑</option><option value="game">游戏风格</option></select><label for="gameGamma">Gamma</label><div class="row"><input id="gameGamma" type="range" min="0" max="1" step="0.05" value="0.50"><output id="gameGammaValue" for="gameGamma">0.50</output></div></div><p id="renderHint" class="muted">选择客户端 JAR 后可使用游戏风格。</p><h3>插件快捷键 <button id="resetKeys">恢复默认</button></h3><p id="keyboardNotice">点按键按钮后输入新键位，可用 Ctrl、Alt 或 Shift 组合。</p><div id="keysList"></div></dialog><footer><span id="stats"></span><span id="help">滚轮缩放 · Alt + 滚轮调整选框 Y 范围</span></footer>
+<script src="__APP__" type="module"></script></body></html>

@@ -1,0 +1,22 @@
+const {chromium}=require(process.env.BROWSER_PLAYWRIGHT),assert=require('node:assert/strict'),{readFile}=require('node:fs/promises'),path=require('node:path'),{Structure}=require('../lib/nbt');
+(async()=>{const browser=await chromium.connectOverCDP('http://127.0.0.1:17931');try{
+ const p=browser.contexts()[0].pages()[0];
+ const step=(fn,...data)=>p.frames()[1].evaluate(([src,args])=>{const w=document.querySelector('iframe#active-frame').contentWindow,d=w.document,q=k=>d.querySelector(k);const set=(s,v,event='input')=>{const el=q(s);el.value=v;el.dispatchEvent(new w.Event(event,{bubbles:true}));};return Function('w','d','q','set','a','return ('+src+')(...a)')(w,d,q,set,args);},[String(fn),data]);
+ const wait=async fn=>{let last;for(let i=0;i<80;i++){try{if(await step(fn))return;}catch(e){last=e;}await new Promise(r=>setTimeout(r,160));}throw new Error('Timed out '+fn+' '+(last||''));};
+ await wait(()=>q('#stats')?.textContent.startsWith('3 可见'));
+ await step(()=>{q('[data-tool=box]').click();});assert.ok(await step(()=>q('#maskOpen').disabled));
+ await step(()=>{q('#keyboard').click();q('[data-resource=jar]').click();});
+ const input=p.locator('.quick-input-widget:visible input').first();await input.waitFor({timeout:10000});
+ assert.ok(process.env.VOXEL_MASK_JAR,'Set VOXEL_MASK_JAR before running this test');
+ await input.fill(process.env.VOXEL_MASK_JAR);await input.press('Enter');
+ await wait(()=>!q('#settingsDialog').open&&q('#stats')?.textContent.startsWith('3 可见'));
+ await step(()=>{q('[data-tool=box]').click();});await wait(()=>!q('#maskPanel').hidden&&!q('#maskOpen').disabled);
+ await step(()=>{q('#maskOpen').click();const f=q('#maskTree input[aria-label="blocks 1"]');f.value='#minecraft:logs';f.dispatchEvent(new w.Event('input',{bubbles:true}));q('#maskSave').click();});
+ await wait(()=>q('#maskEnabled').checked&&q('#maskOptions').hidden);
+ await step(()=>{set('#cornerA','2,1,3');set('#cornerB','4,1,3');set('#name','minecraft:gold_block');set('#props','');q('#apply').click();});
+ await wait(()=>q('#swatches [title="minecraft:gold_block"]')&&!q('#save').disabled);
+ await step(()=>q('#save').click());const file=path.join(process.env.VOXEL_SMOKE_ROOT,'editable.nbt');let verified=false;
+ for(let i=0;i<60;i++){const d=await Structure.open(await readFile(file));const name=x=>d.state((d.at(d.cell([x,1,3]))>>1)-1)?.name;
+  if(name(2)==='minecraft:gold_block'){assert.equal(name(3),'minecraft:gold_block');assert.equal(name(4),'minecraft:stone');verified=true;break;}await new Promise(r=>setTimeout(r,100));}assert.ok(verified);
+ console.log('VSCODE_070_OK: actual JAR selection + native worker filtered two tagged logs and saved; stone unchanged');
+ }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

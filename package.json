@@ -1,0 +1,237 @@
+{
+  "name": "voxel-nbt-studio",
+  "displayName": "Voxel NBT Studio",
+  "description": "Fast offline 3D viewer and voxel editor for Minecraft Java structure NBT.",
+  "publisher": "local-datapack-tools",
+  "version": "1.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/KKNM231/voxel-nbt-studio#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KKNM231/voxel-nbt-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KKNM231/voxel-nbt-studio/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "main": "./extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": false
+    },
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "voxelNbt.structure",
+        "displayName": "Voxel NBT Studio · 3D 结构编辑器",
+        "selector": [
+          {
+            "filenamePattern": "*.nbt"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "voxelNbt.open",
+        "title": "用 Voxel NBT Studio 打开",
+        "category": "Voxel NBT Studio"
+      },
+      {
+        "command": "voxelNbt.create",
+        "title": "新建 NBT 结构",
+        "category": "Voxel NBT Studio"
+      },
+      {
+        "command": "voxelNbt.view",
+        "title": "查看",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.place",
+        "title": "放置",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.paint",
+        "title": "涂刷",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.erase",
+        "title": "擦除",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.pick",
+        "title": "取样",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.extrude",
+        "title": "挤出选区",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.box",
+        "title": "框选区域",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.clearSelection",
+        "title": "清空选区",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.resize",
+        "title": "修改结构尺寸",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.paletteAdd",
+        "title": "复制为新调色板",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.paletteDelete",
+        "title": "删除当前调色板",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisXMinus",
+        "title": "沿 X− 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisXPlus",
+        "title": "沿 X+ 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisYMinus",
+        "title": "沿 Y− 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisYPlus",
+        "title": "沿 Y+ 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisZMinus",
+        "title": "沿 Z− 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.axisZPlus",
+        "title": "沿 Z+ 移动或挤出一格",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.topView",
+        "title": "切到俯视",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.reset",
+        "title": "复位视角",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.material",
+        "title": "切换材质",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.invisibleBlocks",
+        "title": "切换隐形方块显示",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.paletteState",
+        "title": "更新当前调色板槽位",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.tileSave",
+        "title": "写入方块实体字段",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.tileDelete",
+        "title": "删除方块实体字段",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.toggleMoveTile",
+        "title": "切换允许移动方块实体",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.settings",
+        "title": "插件设置",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      },
+      {
+        "command": "voxelNbt.flyView",
+        "title": "切换第一人称飞行",
+        "category": "Voxel NBT Studio",
+        "enablement": "activeCustomEditorId == voxelNbt.structure"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "voxelNbt.open",
+          "when": "resourceExtname == .nbt && !explorerResourceIsFolder",
+          "group": "navigation@80"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:webview": "node test/webview-smoke.cjs",
+    "package": "python package.py"
+  }
+}
